@@ -87,6 +87,13 @@ flowchart TB
 1. LLM
     - 従来の1D RoPE(Rotary Position Embedding) からMRoPE(multimodal Rotary Posiiton Embedding)に変更
         - RoPE: token間の相対距離をrotary embeddingし、長文でも位置情報を正確に伝える仕組み。
+            | トークン | 初期位置 p | 初期角度 θₚ = p×90° | 平行移動 c=2 後の新しい位置 p′ = p + c | 新しい角度 θₚ′ = θₚ + 2×90° |
+            | -------- | ---------- | -------------------- | ------------------------------------- | ----------------------------- |
+            | A        | 1          | 1×90° = 90°          | 3                                     | 90° + 180° = 270°            |
+            | B        | 3          | 3×90° = 270°         | 5                                     | 270° + 180° = 450°           |
+
+          回転後も A と B は同じ角度を維持するため、初期位置を変更しても相対距離は変わりません。
+
         - MRoPE: 時間・空間を含む多軸tokenの相対位置をrotary embeddingし、マルチモーダル入力でも位置関係を正確に維持する仕組み。
 2. Vision Encoder
     - windowed attention
