@@ -2,7 +2,7 @@
 
 ## 概要
 
-Qwen-VLに関する最新の研究や関連情報をまとめたリポジトリです。とくに日本語に関するタスクへの応用を中心に扱っています。
+Qwen 2.5-VL が、日本語のOCRや文書理解の分野で非常に高い性能を示しました。本レポジトリーでは、Qwen-VL の仕組みと関連研究をまとめています。
 
 ## 大規模マルチモーダルモデルとは
 
@@ -12,40 +12,40 @@ Qwen-VLに関する最新の研究や関連情報をまとめたリポジトリ�
 
 ![image.png](images/image.png)
 
-GPT‑4V公開で一気に研究加速し、2024年前半に、多機能化・多領域化が急拡大しました。
+2023年後半に登場した GPT-4V をきっかけに、2024年前半からマルチモーダル分野の研究が急激に加速しています。
 
-### モデル構造
+### モデルの一般的な構造
 
 ![image.png](images/image%201.png)
 
-主に以下の３つのパーツで構成されます：
+主流のマルチモーダルモデルが主に以下の３つのパーツで構成されます：
 
-1. encoder
-CLIP や EVA-CLIP、ConvNeXt-L などのビジョンまたは音声モデルが生データを特徴ベクトルに変換。
+1.  Encoder
+    - CLIP や EVA-CLIP、ConvNeXt-L などのビジョンまたは音声モデルが生データを特徴ベクトルに変換。
 2.  LLM
-GPT 系やLLaMA 系、Qwen 系などの大規模言語モデルがテキストの理解・生成を担当。
-3. connector
-Encoder の出力を LLM が扱える形式に変換。代表的な方式に MLP、Q-Former、Multi-Head Attention ベースがあります
+    - GPT 系やLLaMA 系、Qwen 系などの大規模言語モデルがテキストの理解・生成を担当。
+3.  Connector
+    - Encoder の出力を LLM が扱える形に変換します。主な方式には MLP、Q-Former、Multi-Head Attention があり、Qwen 2.5-VL は MLP ベースのConnectorを採用しています。
 
-現在は、学習済みの Encoder と LLM を繋ぎ、Connector が両者を橋渡しするアーキテクチャが主流です。
+「学習済みEncoderとLLMをConnectorで接続する」という構造が主流です。
 
 ## Qwen2.5-VL
 
-引用：Qwen2.5-VL Technical Report
+引用元：Qwen2.5-VL Technical Report
 
 ![image.png](images/image%202.png)
 
-### Qwen2.5‑VL の構成
+### Qwen2.5‑VL の基本構成
 
 1. Large Language Model (LLM)
 2. Vision Encoder
-3. MLP-based Vision-Language Merger
+3. MLP-based Vision-Language Merger(connector)
 
-### 感想
+**感想：**
 
-Qwen 2.5‑VL では、Windowed Attention や MLPベースの Merger による特徴圧縮、RMSNorm といった工夫で計算コストを大幅に削減しています。また、改良版 RoPE を導入し、より合理的なEmbeddingで性能を向上させています。
+Qwen 2.5‑VL は、計算コストの削減に重点を置き、RoPE を改良することで、より効率的かつ効果的なembbeding表現を実現した点が、主な貢献として印象に残りました。
 
-224×224画像入力時の処理フロー：
+**処理フロー：224×224画像入力時のパイプライン**
 
 ```mermaid
 flowchart TB
@@ -85,81 +85,70 @@ flowchart TB
 ```
 
 1. LLM
-    - 従来の1D RoPE(Rotary Position Embedding) からMRoPE(multimodal Rotary Posiiton Embedding)に変更
+    - 従来の1D RoPE(Rotary Position Embedding) からMRoPE(multimodal Rotary Posiiton Embedding)へ進化
         - RoPE: token間の相対距離をrotary embeddingし、長文でも位置情報を正確に伝える仕組み。
+            
+            具体例：トークンの回転による位置情報の保持
+            
+            以下の表は、トークンAとBがそれぞれ初期位置から平行移動した場合の角度変化を示しています。このように、すべてのtokenに同じ角度を加えることで、token間の相対的な角度差（ここでは180°）は変わらず、相対位置関係が保持されます。
+            
             | トークン | 初期位置 p | 初期角度 θₚ = p×90° | 平行移動 c=2 後の新しい位置 p′ = p + c | 新しい角度 θₚ′ = θₚ + 2×90° |
-            | -------- | ---------- | -------------------- | ------------------------------------- | ----------------------------- |
-            | A        | 1          | 1×90° = 90°          | 3                                     | 90° + 180° = 270°            |
-            | B        | 3          | 3×90° = 270°         | 5                                     | 270° + 180° = 450°           |
-
-          回転後も A と B は同じ角度を維持するため、初期位置を変更しても相対距離は変わりません。
-
+            | --- | --- | --- | --- | --- |
+            | A | 1 | 1×90° = 90° | 3 | 90° + 180° = 270° |
+            | B | 3 | 3×90° = 270° | 5 | 270° + 180° = 450° |
         - MRoPE: 時間・空間を含む多軸tokenの相対位置をrotary embeddingし、マルチモーダル入力でも位置関係を正確に維持する仕組み。
 2. Vision Encoder
     - windowed attention
-        - Full Attentionはすべてのpatch間で注意をかけて画像全体の依存関係を計算することに対して、windowed attentionはpatchだけに注意をかけて計算することによって、計算量を抑えます。
+        - Full Attentionはすべてのpatch間でattentionをかけて画像全体の依存関係を計算することに対して、windowed attentionは局所的なパッチ内に抑え、効率を改善。
     - 2D-RoPE
-        - 画像内パッチの水平・垂直位置をrotary embeddingし、visual tokenの相対空間関係を保持する。
+        - 画像の水平・垂直位置をrotary embeddingし、visual tokenの相対空間関係を保持。
     - RMSNorm
-        - 平均値計算を省略しつつ安定した正規化を提供し、演算速度とメモリ効率を改善します。
+        - 平均値の計算などを省略し、高速で安定した正規化処理。
     - SwiGLU
-        - GLU のゲート機構と Swish 活性化を組み合わせ、重要な信号を選び取りつつ滑らかな出力変換で学習を安定化します。
+        - GLU のゲート機構と Swish 活性化を組み合わせ、重要な特徴だけを抽出し、安定した学習を実現する活性化関数。
 3. MLP-based Vision-Language Merger
-    - Merger は画像patch特徴を統合・圧縮して一定数の視覚tokenに変換します。これによりdecoderへの入力長を一定に保ち、マルチモーダル情報を効率よく統合します。
+    - Merger は画像patch特徴を統合・圧縮して一定数のvisual tokenに変換し、効率的にLLMに入力。
 
-### pre-training
+### Pre-trainingの工夫
 
 1. Interleaved Image-Text Data
-    
-    画像と文章が一組になったデータを大量に収集し、基本クリーニングを実施した後に、独自モデルで 文章品質、画像‑文章の関連度、 情報の補完性、情報量バランスをスコアリングし、高得点サンプルだけを採用。
-    
+    - 高品質な画像テキストペアを収集し、クリーニングを実施した後に、独自モデルで 文章品質、画像‑文章の関連度、 情報の補完性、情報量バランスをスコアリングし、高得点サンプルだけを採用。
 2. Grounding Data with Absolute Position Coordinates 
-    - 画像はリサイズせず原画素のまま入力し、バウンディングボックスやポイントをピクセル単位の絶対座標で記録。
-    - 実際のサイズ感・位置関係をそのまま学習できるため、高精度な物体検出・位置特定が可能に。
+    - 画像はリサイズせず原画素のまま入力し、実際の解像度のまま、絶対座標で物体位置を学習。
 3. Document Omni-Parsing Data 
     - 段落（`<p>`）、表（`<table>`）、グラフ、数式、キャプション、OCRテキスト、楽譜、化学式などをすべてHTMLタグ＋`bbox`属性で統一。
-    - 従来別モデルで分担していたレイアウト解析・テキスト抽出・図表理解を、単一のVLMで一括処理できるように。
+    - レイアウト解析・テキスト抽出・図表理解などのタスクで学習を実施。
 4. OCR Data 
-    
-    合成データと実写データを組み合わせ、多言語・多フォント・多シーンの文字認識サンプルを大規模に収集・整備。
-    
+    - 合成データと実写データを組み合わせ、多言語・多フォント・多シーンの文字認識サンプルを大規模に収集・整備。
 5. Video Data 
-    
-    動的 FPS サンプリングと絶対時間に揃えた MRoPE を導入し、数秒〜数時間の動画をネイティブ解像度で学習。
-    
+    - 動的 FPS サンプリングと絶対時間に揃えた MRoPE を導入し、動画をネイティブ解像度で学習。
 6. Agent Data
-    
-    モバイル／Web／デスクトップのUIスクリーンショットと、それを操作する一連の関数呼び出し（function‑call）ステップをChain‑of‑Thought付きで学習
-    
+    - モバイル／Web／デスクトップのUIスクリーンショットと、それを操作する一連の関数呼び出し（function‑call）ステップをChain‑of‑Thought付きで学習
 
-### 感想
+**感想：**
 
-日本語の読み取りタスクでは、Qwen 2 から大きな構造変更がないのに性能が大きく伸びている印象があります。事前学習については、論文だけではどんなデータをどう使って学習したのかハッキリつかめませんが、日本語OCRデータを増強したことが大きな要因ではないかと考えられます。。
+日本語の読み取りタスクでは、Qwen 2 から大きな構造変更がないのに性能が大きく伸びている印象があります。事前学習については、論文だけではどんなデータをどう使って学習したのかハッキリつかめませんが、日本語OCRデータを増強したことが大きな要因ではないかと感じています。
 
 ### Post-training
 
 1. Instruction Data
     
-    半分は画像・動画付き、半分はテキストのみで、対話形式の命令フォーマットとしてモデルに提示。
+    対話形式の指示データを利用
     
 2. Data Filtering Pipeline
     
-    ドメイン別分類し、評価モデルで採点し、点数が低いノイズや冗長サンプルを除去
+    ドメイン別分類した後に評価モデルで採点し、不要なデータを除去するフィルタリングパイプラインを構築
     
 3. Rejection Sampling for Enhanced Reasoning
     
-    中間モデルで生成した Chain‑of‑Thought 推論結果をGTと照合し、一致した高品質サンプルのみを残す。
+    中間モデルで生成した Chain‑of‑Thought 推論結果をGTと照合し、一致した高品質データのみを採用
     
 4. DPO (Direct Preference Optimization)
     
-    DPOはRLHFと同等の性能を示しており、よりシンプルなDPOを選択するメリットが大きい。
+    DPOはRLHFと同等の性能を示しており、よりシンプルなDPOを採用
     
 
 ## ファインチューニング
-
-wip
-
-## 量子化
 
 wip
 
@@ -197,4 +186,4 @@ PyPDF を用いて文字ブロックや画像の座標情報を抽出し、{x, y
 
 **OmniSVG: A Unified Scalable Vector Graphics Generation Model**
 
-WIP
+wip
