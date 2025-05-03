@@ -187,3 +187,6 @@ PyPDF を用いて文字ブロックや画像の座標情報を抽出し、{x, y
 **OmniSVG: A Unified Scalable Vector Graphics Generation Model**
 
 wip
+
+**LAYRA: A Visual-First Retrieval Agent Beyond OCR
+wip
