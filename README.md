@@ -41,7 +41,7 @@ Qwen 2.5-VL が、日本語のOCRや文書理解の分野で非常に高い性�
 2. Vision Encoder
 3. MLP-based Vision-Language Merger(connector)
 
-**感想：**
+感想：
 
 Qwen 2.5‑VL は、計算コストの削減に重点を置き、RoPE を改良することで、より効率的かつ効果的なembbeding表現を実現した点が、主な貢献として印象に残りました。
 
@@ -125,7 +125,7 @@ flowchart TB
 6. Agent Data
     - モバイル／Web／デスクトップのUIスクリーンショットと、それを操作する一連の関数呼び出し（function‑call）ステップをChain‑of‑Thought付きで学習
 
-**感想：**
+感想：
 
 日本語の読み取りタスクでは、Qwen 2 から大きな構造変更がないのに性能が大きく伸びている印象があります。事前学習については、論文だけではどんなデータをどう使って学習したのかハッキリつかめませんが、日本語OCRデータを増強したことが大きな要因ではないかと感じています。
 
@@ -156,6 +156,28 @@ wip
 
 wip
 
+## Visual Document Retrieval
+
+May 5, 2025 
+
+### ColQwen2.5: Visual Retriever based on Qwen2.5-VL-3B-Instruct with ColBERT strategy
+
+**概要：**
+
+Qwen2.5-VL-3B-Instructをベースに、画像中の文字だけでなくレイアウトや図表とテキストの複合的な意味関係をベクトルとして捉えることで、高精度なドキュメント検索を実現しています。
+
+**学習データ：**
+
+127,460 件の英語クエリ-ページ対
+
+**学習手法：**
+
+Qwen2.5-VLで得たクエリ・画像パッチのベクトル間最大内積（MaxSim）を合算し、正例が負例より高得点になるよう対比損失で最適化します。
+
+**結果・感想：**
+
+学習データは英語のみですが、、Qwen2.5_VL自体が日本語対応したため、実際の日本語のスライドを使った検索では、問題なく高い精度で検索できました。
+
 ## Qwen-VL関連モデル・派生モデル
 
 ### olmOCR: Unlocking Trillions of Tokens in PDFs with Vision Language Models
@@ -176,7 +198,7 @@ Qwen2‑VL‑7B‑Instruct をベースモデルにしています。
 
 PyPDF を用いて文字ブロックや画像の座標情報を抽出し、{x, y, width, height} 付きのテキストと共にページをレンダリングした画像を入力としてQwen2‑VLをファインチューニングを行います。LoRAとフルパラメータファインチューニング両方実施し、フルパラメータの方が精度が高いとの結果が報告されました。
 
-**感想：**
+**結果・感想：**
 
 ドキュメント・アンカリングにより文字情報だけでなくレイアウト情報も学習に取り込むことで、PDF抽出の精度が向上しました。モデル自体の構造変更は行わず、追加情報のみで性能改善を実現しています。ただし、学習ラベルを GPT 生成データに依存しているため、商用利用についてはライセンスや生成データの扱いに注意が必要だと考えます。
 
@@ -186,7 +208,4 @@ PyPDF を用いて文字ブロックや画像の座標情報を抽出し、{x, y
 
 **OmniSVG: A Unified Scalable Vector Graphics Generation Model**
 
-wip
-
-**LAYRA: A Visual-First Retrieval Agent Beyond OCR
 wip
